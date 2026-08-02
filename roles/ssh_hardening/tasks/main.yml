@@ -1,0 +1,90 @@
+---
+# Add admin/deploy/connecting users to the allow-group before AllowGroups goes live, or we lock ourselves out. Only touches existing users.
+- name: Ensure the SSH allow-groups exist
+  ansible.builtin.group:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ ssh_allow_groups }}"
+
+- name: Enumerate local users
+  ansible.builtin.getent:
+    database: passwd
+
+- name: Add admin/deploy/connecting users to an allowed SSH group (prevent lockout)
+  ansible.builtin.user:
+    name: "{{ item }}"
+    groups: "{{ ssh_allow_groups[0] }}"
+    append: true
+  loop: "{{ [admin_user | default(''), deploy_user | default(''), ansible_user | default('')] | select('string') | reject('equalto', '') | unique }}"
+  when: item in ansible_facts.getent_passwd
+
+- name: Resolve the connecting user's groups
+  ansible.builtin.command: "id -nG {{ ansible_user }}"
+  register: ssh_login_user_groups
+  changed_when: false
+  when: ansible_user is defined
+
+- name: Assert the connecting user stays in an allowed group after hardening
+  ansible.builtin.assert:
+    that: ssh_allow_groups | intersect(ssh_login_user_groups.stdout.split()) | length > 0
+    fail_msg: >-
+      SSH user '{{ ansible_user }}' is in groups [{{ ssh_login_user_groups.stdout }}],
+      but ssh_allow_groups is [{{ ssh_allow_groups | join(' ') }}], applying AllowGroups
+      would lock you out. Add the user to one of those groups or adjust ssh_allow_groups.
+    quiet: true
+  when: ansible_user is defined
+
+# Stock FreeBSD sshd_config has no Include line or drop-in dir, so create both. Include goes at the top (sshd is first-match-wins).
+- name: Ensure the sshd_config.d drop-in dir exists
+  ansible.builtin.file:
+    path: /etc/ssh/sshd_config.d
+    state: directory
+    owner: root
+    group: wheel
+    mode: "0755"
+
+- name: Ensure sshd_config includes the drop-in dir
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    line: "Include /etc/ssh/sshd_config.d/*.conf"
+    insertbefore: BOF
+    firstmatch: true
+    validate: "/usr/sbin/sshd -t -f %s"
+  notify: Reload sshd
+
+- name: Deploy the SSH hardening drop-in
+  ansible.builtin.template:
+    src: 10-hardening.conf.j2
+    dest: /etc/ssh/sshd_config.d/10-hardening.conf
+    owner: root
+    group: wheel
+    mode: "0644"
+    validate: "/usr/sbin/sshd -t -f %s"
+  notify: Reload sshd
+
+- name: Detect weak DH moduli (< 3072 bit)
+  ansible.builtin.command: awk 'NF==7 && $5 < 3071' /etc/ssh/moduli
+  register: ssh_weak_moduli
+  changed_when: false
+  when: ssh_prune_moduli | bool
+
+- name: Prune weak DH moduli (< 3072 bit)
+  ansible.builtin.shell: >-
+    set -o errexit;
+    awk 'NF!=7 || $5 >= 3071' /etc/ssh/moduli > /etc/ssh/moduli.tmp &&
+    mv /etc/ssh/moduli.tmp /etc/ssh/moduli
+  when:
+    - ssh_prune_moduli | bool
+    - ssh_weak_moduli.stdout | length > 0
+  changed_when: true
+  notify: Reload sshd
+
+- name: Ensure /etc/ssh/moduli has stock ownership and mode
+  ansible.builtin.file:
+    path: /etc/ssh/moduli
+    owner: root
+    group: wheel
+    mode: "0644"
+  when: ssh_prune_moduli | bool
+
+# ECDSA excluded by algorithm in the drop-in. Deleting the key is futile: sshd_keygen regenerates it on reload.

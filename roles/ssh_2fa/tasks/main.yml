@@ -1,0 +1,52 @@
+---
+- name: Install the TOTP PAM module
+  community.general.pkgng:
+    name: pam_google_authenticator
+    state: present
+  when: ssh_2fa_totp_enabled | bool
+
+- name: Install libfido2 for FIDO2 sk-keys
+  community.general.pkgng:
+    name: libfido2
+    state: present
+  when: ssh_2fa_fido2_enabled | bool
+
+- name: Back up /etc/pam.d/sshd once
+  ansible.builtin.copy:
+    src: /etc/pam.d/sshd
+    dest: /etc/pam.d/sshd.orig
+    remote_src: true
+    force: false
+    owner: root
+    group: wheel
+    mode: "0644"
+  when: ssh_2fa_totp_enabled | bool
+
+# Comment out FreeBSD's password auth line (pam_unix / include system) so kbd-interactive is TOTP-only. nullok spares un-enrolled users.
+- name: Disable the default password auth stack in sshd PAM (TOTP-only kbd-interactive)
+  ansible.builtin.replace:
+    path: /etc/pam.d/sshd
+    regexp: '^(auth\s+(?:\S+\s+)?(?:include\s+system|\S*pam_unix\.so).*)$'
+    replace: '#\1  # disabled by ssh_2fa'
+  when: ssh_2fa_totp_enabled | bool
+  notify: Reload sshd
+
+- name: Require TOTP for keyboard-interactive logins
+  ansible.builtin.lineinfile:
+    path: /etc/pam.d/sshd
+    regexp: '^auth\s+required\s+\S*pam_google_authenticator\.so'
+    line: "auth required /usr/local/lib/pam_google_authenticator.so{{ ' nullok' if ssh_2fa_totp_nullok else '' }}"
+    insertafter: BOF
+    firstmatch: true
+  when: ssh_2fa_totp_enabled | bool
+  notify: Reload sshd
+
+- name: Deploy the 2FA sshd drop-in
+  ansible.builtin.template:
+    src: 20-2fa.conf.j2
+    dest: /etc/ssh/sshd_config.d/20-2fa.conf
+    owner: root
+    group: wheel
+    mode: "0644"
+    validate: "/usr/sbin/sshd -t -f %s"
+  notify: Reload sshd

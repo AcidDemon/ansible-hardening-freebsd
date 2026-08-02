@@ -1,0 +1,4 @@
+---
+- name: Rebuild login.conf db
+  ansible.builtin.command: cap_mkdb /etc/login.conf
+  changed_when: true

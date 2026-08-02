@@ -1,0 +1,19 @@
+---
+- name: Configure security reporting
+  when: security_reporting_enabled | bool
+  block:
+    - name: Deploy the posture report script
+      ansible.builtin.template:
+        src: security-report.sh.j2
+        dest: /usr/local/sbin/security-report.sh
+        owner: root
+        group: wheel
+        mode: "0750"
+
+    - name: Schedule the daily posture report
+      ansible.builtin.cron:
+        name: security-report
+        user: root
+        minute: "0"
+        hour: "{{ security_reporting_hour }}"
+        job: "/usr/local/sbin/security-report.sh"

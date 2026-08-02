@@ -1,0 +1,38 @@
+---
+namespace: acidnetworks
+name: hardening_freebsd
+version: 0.1.0
+readme: README.md
+authors:
+  - AcidDemon <c.schlueter@acidnetworks.net>
+description: >-
+  FreeBSD hardening layer: SSH hardening + 2FA, OpenBSM audit, AIDE, CrowdSec,
+  sshguard, login.conf account policy, chkrootkit and Lynis, with an at(1)
+  rollback dead-man's-switch. Chains after acidnetworks.base_freebsd.
+license:
+  - MIT
+tags:
+  - freebsd
+  - hardening
+  - security
+repository: https://github.com/AcidDemon/ansible-hardening-freebsd
+dependencies:
+  community.general: "*"
+  ansible.posix: "*"
+# Ship roles/ + playbooks/ (harden.yml + tasks/ carry the rollback safety logic) + README/LICENSE.
+build_ignore:
+  - .ansible
+  - .git
+  - .gitignore
+  - .envrc
+  - .yamllint
+  - ansible.cfg
+  - requirements.yml
+  - site.yml
+  - Vagrantfile
+  - inventory
+  - files
+  - tests
+  - docs
+  - playbooks/roles
+  - "*.tar.gz"

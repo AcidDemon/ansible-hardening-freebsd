@@ -1,0 +1,16 @@
+# Managed by Ansible
+{% if ssh_2fa_totp_enabled %}
+KbdInteractiveAuthentication yes
+AuthenticationMethods publickey,keyboard-interactive
+{% else %}
+AuthenticationMethods publickey
+{% endif %}
+
+Match User {{ deploy_user }}
+    AuthenticationMethods publickey
+
+{% if ssh_2fa_fido2_enabled %}
+Match Group fido2users
+    AuthenticationMethods publickey
+    PubkeyAuthOptions verify-required
+{% endif %}

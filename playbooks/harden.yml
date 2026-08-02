@@ -1,0 +1,50 @@
+---
+# Runs after acidnetworks.base_freebsd, which owns OS identity, pf, time, users and updates.
+- name: Harden the FreeBSD host
+  hosts: hardened_hosts
+  become: true
+  gather_facts: true
+  collections:
+    - acidnetworks.hardening_freebsd
+  pre_tasks:
+    - name: Arm the dead-man's-switch before any cutover
+      ansible.builtin.include_tasks: tasks/arm_rollback.yml
+      when: harden_safe_rollback | default(true) | bool
+  tasks:
+    - name: Apply hardening roles (disarm always runs if we stay reachable)
+      block:
+        - name: Apply accounts role
+          ansible.builtin.import_role: { name: accounts }
+
+        - name: Apply ssh_hardening role
+          ansible.builtin.import_role: { name: ssh_hardening }
+        - name: Verify connectivity after ssh_hardening
+          ansible.builtin.include_tasks: tasks/verify_conn.yml
+
+        - name: Apply crowdsec role
+          ansible.builtin.import_role: { name: crowdsec }
+        - name: Apply sshguard role
+          ansible.builtin.import_role: { name: sshguard }
+        - name: Apply sysctl_hardening role
+          ansible.builtin.import_role: { name: sysctl_hardening }
+        - name: Apply auditd role
+          ansible.builtin.import_role: { name: auditd }
+        - name: Apply aide role
+          ansible.builtin.import_role: { name: aide }
+        - name: Apply lynis role
+          ansible.builtin.import_role: { name: lynis }
+        - name: Apply hardening_misc role
+          ansible.builtin.import_role: { name: hardening_misc }
+        - name: Apply rootkit_scanners role
+          ansible.builtin.import_role: { name: rootkit_scanners }
+        - name: Apply security_reporting role
+          ansible.builtin.import_role: { name: security_reporting }
+
+        - name: Apply ssh_2fa role
+          ansible.builtin.import_role: { name: ssh_2fa }
+        - name: Verify connectivity after ssh_2fa
+          ansible.builtin.include_tasks: tasks/verify_conn.yml
+      always:
+        - name: Disarm the dead-man's-switch
+          ansible.builtin.include_tasks: tasks/disarm_rollback.yml
+          when: harden_safe_rollback | default(true) | bool

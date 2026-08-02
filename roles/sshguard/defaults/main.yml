@@ -1,0 +1,6 @@
+---
+sshguard_enabled: true
+sshguard_whitelist_cidrs: "{{ management_cidrs | default([]) }}"  # noqa: var-naming[no-role-prefix]
+sshguard_blocktime: 3600     # BLOCK_TIME seconds
+sshguard_threshold: 30       # attack score before a block, not a hit count
+sshguard_detection_time: 1800

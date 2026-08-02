@@ -1,0 +1,6 @@
+# Managed by Ansible
+127.0.0.0/8
+::1/128
+{% for c in sshguard_whitelist_cidrs %}
+{{ c }}
+{% endfor %}

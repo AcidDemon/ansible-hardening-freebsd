@@ -1,0 +1,22 @@
+---
+- name: Configure OpenBSM audit
+  when: auditd_enabled | bool
+  block:
+    - name: Deploy audit_control
+      ansible.builtin.template:
+        src: audit_control.j2
+        dest: /etc/security/audit_control
+        owner: root
+        group: wheel
+        mode: "0600"
+      notify: Reload auditd
+
+    - name: Enable auditd in rc.conf
+      community.general.sysrc:
+        name: auditd_enable
+        value: "YES"
+
+    - name: Ensure auditd is running
+      ansible.builtin.service:
+        name: auditd
+        state: started

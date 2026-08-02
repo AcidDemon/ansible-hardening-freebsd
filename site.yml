@@ -1,0 +1,5 @@
+---
+# Dev entrypoint (not shipped; see build_ignore). Real play ships as
+# acidnetworks.hardening_freebsd.harden.
+- name: Harden the FreeBSD host
+  ansible.builtin.import_playbook: playbooks/harden.yml

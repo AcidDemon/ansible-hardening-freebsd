@@ -1,0 +1,11 @@
+---
+aide_enabled: true
+aide_init: true
+# Churny paths excluded so the nightly check stays actionable.
+aide_exclude_paths:
+  - /var/db/pkg
+  - /var/log
+  - /var/run
+  - /var/tmp
+  - /tmp
+  - /var/audit

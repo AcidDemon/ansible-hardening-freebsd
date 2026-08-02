@@ -1,0 +1,34 @@
+# Managed by Ansible
+PermitRootLogin no
+PubkeyAuthentication yes
+PasswordAuthentication no
+PermitEmptyPasswords no
+UsePAM yes
+{% if ssh_port | int != 22 %}
+Port {{ ssh_port }}
+{% endif %}
+AllowGroups {{ ssh_allow_groups | join(' ') }}
+HostKeyAlgorithms {{ ssh_host_key_algorithms }}
+MaxAuthTries 3
+MaxSessions 4
+LoginGraceTime 30
+ClientAliveInterval 300
+ClientAliveCountMax 2
+X11Forwarding no
+AllowTcpForwarding no
+AllowAgentForwarding no
+PermitTunnel no
+AllowStreamLocalForwarding no
+GatewayPorts no
+Compression no
+IgnoreRhosts yes
+HostbasedAuthentication no
+PermitUserEnvironment no
+LogLevel VERBOSE
+Subsystem sftp internal-sftp -f AUTHPRIV -l INFO
+{% if ssh_pin_crypto %}
+KexAlgorithms {{ ssh_kex }}
+Ciphers {{ ssh_ciphers }}
+MACs {{ ssh_macs }}
+PubkeyAcceptedAlgorithms {{ ssh_pubkey_algorithms }}
+{% endif %}

@@ -1,0 +1,7 @@
+---
+# Set false where these sysctls are read-only (e.g. a jail).
+sysctl_hardening_enabled: true
+sysctl_hardening_settings:
+  security.bsd.hardlink_check_uid: "1"
+  security.bsd.hardlink_check_gid: "1"
+  # check_interface omitted: readback isn't idempotent on FreeBSD 14, and pf antispoof covers it.

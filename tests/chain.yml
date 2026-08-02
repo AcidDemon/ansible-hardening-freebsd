@@ -1,0 +1,5 @@
+---
+# Chain smoke: apply the base layer (installed collection) then this hardening layer
+# (local playbook). Mirrors the real base -> hardening service-repo chain.
+- import_playbook: acidnetworks.base_freebsd.site
+- import_playbook: ../playbooks/harden.yml

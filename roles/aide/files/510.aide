@@ -1,0 +1,6 @@
+#!/bin/sh
+# Managed by Ansible
+[ -f /var/db/aide/aide.db ] || exit 0
+echo ""
+echo "AIDE file-integrity check:"
+aide --check --config /usr/local/etc/aide.conf

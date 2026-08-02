@@ -1,0 +1,8 @@
+name: crowdsecurity/management-whitelist
+description: "Whitelist management networks"
+whitelist:
+  reason: "management networks (Ansible-managed)"
+  cidr:
+{% for c in crowdsec_whitelist_cidrs %}
+    - "{{ c }}"
+{% endfor %}

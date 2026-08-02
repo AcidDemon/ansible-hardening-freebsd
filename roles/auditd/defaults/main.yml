@@ -1,0 +1,10 @@
+---
+# Set false in a jail, where the audit device is unavailable.
+auditd_enabled: true
+# audit classes: lo=login, aa=authn/authz, ad=admin.
+auditd_flags: "lo,aa,ad"
+auditd_naflags: "lo,aa"
+auditd_policy: "cnt,argv"
+auditd_filesz: "2M"
+auditd_expire_after: "30d"
+auditd_minfree: 20

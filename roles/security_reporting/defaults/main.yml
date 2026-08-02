@@ -1,0 +1,3 @@
+---
+security_reporting_enabled: true
+security_reporting_hour: "7"

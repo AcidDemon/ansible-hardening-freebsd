@@ -1,0 +1,15 @@
+---
+ssh_port: 22
+ssh_allow_groups:
+  - sshusers
+ssh_prune_moduli: true
+
+# Crypto floor ~OpenSSH 7.2 (2016): curve25519, aes-gcm, chacha20, rsa-sha2, ed25519.
+# For a legacy client set ssh_pin_crypto: false, or override a list below.
+ssh_pin_crypto: true
+ssh_host_key_algorithms: >-
+  ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256,rsa-sha2-256-cert-v01@openssh.com
+ssh_pubkey_algorithms: "ssh-ed25519,sk-ssh-ed25519@openssh.com,rsa-sha2-512,rsa-sha2-256"
+ssh_ciphers: "chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com"
+ssh_macs: "hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com"
+ssh_kex: "curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512"

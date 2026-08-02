@@ -1,0 +1,14 @@
+---
+- name: Bootstrap python3
+  hosts: hardened_hosts
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Ensure python3 is installed
+      ansible.builtin.raw: |
+        command -v python3 >/dev/null 2>&1 && exit 0
+        ASSUME_ALWAYS_YES=yes pkg bootstrap -y || true
+        ASSUME_ALWAYS_YES=yes pkg install -y python3
+      changed_when: false
+
+# base_freebsd's base_users owns account/group/key creation; it runs before this repo.

@@ -1,0 +1,41 @@
+---
+# On lockout, strip the SSH drop-ins and reload sshd. Never touch pf, base owns /etc/pf.conf.
+# The revert is an at(1) job; atrun fires it at ~5 min granularity, so the real window is
+# harden_rollback_minutes + up to 5 min.
+# Below drops rollback jobs left armed by an aborted run, so a stale one can't fire after a
+# later success. The grep only matches jobs containing our drop-in path, so other at jobs stay.
+- name: Clear any stale harden rollback at jobs
+  ansible.builtin.shell:
+    cmd: |
+      for j in $(atq 2>/dev/null | awk '{print $1}'); do
+        if at -c "$j" 2>/dev/null | grep -q 'sshd_config.d/10-hardening.conf'; then atrm "$j"; fi
+      done
+  changed_when: false
+
+- name: Arm the rollback dead-man's-switch (at job)
+  ansible.builtin.shell:
+    cmd: >-
+      printf 'rm -f /etc/ssh/sshd_config.d/10-hardening.conf /etc/ssh/sshd_config.d/20-2fa.conf; service sshd reload\n'
+      | at now + {{ harden_rollback_minutes | default(20) }} minutes
+  register: _harden_at
+  changed_when: true
+
+# FreeBSD at(1) prints the job id ("job N at ...") to stderr, not stdout.
+- name: Capture the at job id (for disarm)
+  ansible.builtin.set_fact:
+    _harden_at_job: "{{ _matches[0] if (_matches | length > 0) else '' }}"
+  vars:
+    _matches: "{{ ((_harden_at.stderr | default('')) ~ ' ' ~ (_harden_at.stdout | default(''))) | regex_findall('[Jj]ob\\s+(\\d+)') }}"
+
+- name: Fail early if the rollback job id could not be captured (else it fires on success)
+  ansible.builtin.assert:
+    that: _harden_at_job | length > 0
+    fail_msg: >-
+      Could not parse the at(1) job id from: stderr={{ _harden_at.stderr | default('') }}
+      stdout={{ _harden_at.stdout | default('') }}. Refusing to proceed, an uncancellable
+      rollback would strip the SSH hardening later.
+    quiet: true
+
+- name: Report the armed rollback
+  ansible.builtin.debug:
+    msg: "Rollback armed as at job {{ _harden_at_job }} (fires in ~{{ harden_rollback_minutes | default(20) }} min if we lose connectivity)."

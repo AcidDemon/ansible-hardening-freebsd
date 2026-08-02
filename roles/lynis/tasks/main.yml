@@ -1,0 +1,12 @@
+---
+- name: Configure lynis
+  when: lynis_enabled | bool
+  block:
+    - name: Install lynis
+      community.general.pkgng:
+        name: lynis
+        state: present
+
+    - name: Run a lynis system audit (report-only)
+      ansible.builtin.command: lynis audit system --quiet --no-colors
+      changed_when: false

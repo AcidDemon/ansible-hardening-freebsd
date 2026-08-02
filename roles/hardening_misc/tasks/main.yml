@@ -1,0 +1,69 @@
+---
+- name: Disable core dumps
+  ansible.posix.sysctl:
+    name: "{{ item }}"
+    value: "0"
+    sysctl_file: /etc/sysctl.conf
+    sysctl_set: true
+    state: present
+    reload: false
+  loop:
+    - kern.coredump
+    - kern.sugid_coredump
+  when: hardening_misc_coredumps | bool
+
+- name: Restrict cron and at to allowlists
+  ansible.builtin.copy:
+    dest: "{{ item }}"
+    content: "{{ (['root', admin_user, deploy_user] + hardening_misc_cron_allow_extra_users) | join('\n') }}\n"
+    owner: root
+    group: wheel
+    mode: "0644"
+  loop:
+    - /var/cron/allow
+    - /var/at/at.allow
+  when: hardening_misc_cron_allow | bool
+
+- name: Point root mail at the admin address
+  ansible.builtin.lineinfile:
+    path: /etc/mail/aliases
+    regexp: '^root:'
+    line: "root: {{ admin_email }}"
+    create: true
+    owner: root
+    group: wheel
+    mode: "0644"
+  when: hardening_misc_mail | bool
+  notify: Rebuild aliases
+
+- name: External SMTP relay via msmtp (opt-in)
+  when: hardening_misc_msmtp | bool
+  block:
+    - name: Install msmtp
+      community.general.pkgng:
+        name: msmtp
+        state: present
+
+    - name: Deploy msmtprc
+      ansible.builtin.template:
+        src: msmtprc.j2
+        dest: /usr/local/etc/msmtprc
+        owner: root
+        group: wheel
+        mode: "0600"
+
+- name: Use a noexec tmpfs /tmp (opt-in; applies on reboot)
+  when: hardening_misc_tmp_noexec | bool
+  block:
+    - name: Add a noexec tmpfs /tmp entry to fstab
+      ansible.posix.mount:
+        path: /tmp
+        src: tmpfs
+        fstype: tmpfs
+        opts: "rw,mode=1777,nosuid,nodev,noexec"
+        state: present
+
+    - name: Clear /tmp on boot
+      community.general.sysrc:
+        name: clear_tmp_enable
+        value: "YES"

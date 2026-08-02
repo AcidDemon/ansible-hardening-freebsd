@@ -1,0 +1,6 @@
+---
+- name: Disarm the rollback dead-man's-switch
+  ansible.builtin.command: "atrm {{ _harden_at_job }}"
+  changed_when: false
+  failed_when: false
+  when: _harden_at_job | default('') | length > 0

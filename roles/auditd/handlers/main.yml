@@ -1,0 +1,4 @@
+---
+- name: Reload auditd
+  ansible.builtin.command: audit -s
+  changed_when: false

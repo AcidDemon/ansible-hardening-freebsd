@@ -1,0 +1,26 @@
+# Managed by Ansible
+database=file:/var/db/aide/aide.db
+database_out=file:/var/db/aide/aide.db.new
+database_new=file:/var/db/aide/aide.db.new
+gzip_dbout=no
+
+Checksums = sha256+sha512
+NORMAL = p+i+n+u+g+s+m+c+Checksums
+DIR = p+i+n+u+g
+
+/etc            NORMAL
+/boot           NORMAL
+/bin            NORMAL
+/sbin           NORMAL
+/lib            NORMAL
+/libexec        NORMAL
+/usr/bin        NORMAL
+/usr/sbin       NORMAL
+/usr/lib        NORMAL
+/usr/local/etc  NORMAL
+/usr/local/bin  NORMAL
+/usr/local/sbin NORMAL
+
+{% for p in aide_exclude_paths %}
+!{{ p }}
+{% endfor %}

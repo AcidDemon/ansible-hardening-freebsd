@@ -1,0 +1,13 @@
+---
+- name: Apply and persist hardening sysctls in /etc/sysctl.conf
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.conf
+    sysctl_set: true
+    state: present
+    reload: false
+  loop: "{{ sysctl_hardening_settings | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: sysctl_hardening_enabled | bool

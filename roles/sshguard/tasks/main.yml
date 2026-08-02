@@ -1,0 +1,36 @@
+---
+- name: Configure sshguard
+  when: sshguard_enabled | bool
+  block:
+    - name: Install sshguard
+      community.general.pkgng:
+        name: sshguard
+        state: present
+
+    - name: Deploy the sshguard whitelist (management CIDRs + loopback)
+      ansible.builtin.template:
+        src: sshguard.whitelist.j2
+        dest: /usr/local/etc/sshguard.whitelist
+        owner: root
+        group: wheel
+        mode: "0644"
+      notify: Restart sshguard
+
+    - name: Configure sshguard (pf backend, whitelist, block time)
+      ansible.builtin.template:
+        src: sshguard.conf.j2
+        dest: /usr/local/etc/sshguard.conf
+        owner: root
+        group: wheel
+        mode: "0644"
+      notify: Restart sshguard
+
+    - name: Enable sshguard in rc.conf
+      community.general.sysrc:
+        name: sshguard_enable
+        value: "YES"
+
+    - name: Ensure sshguard is running
+      ansible.builtin.service:
+        name: sshguard
+        state: started

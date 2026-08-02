@@ -1,0 +1,15 @@
+---
+- name: Configure chkrootkit
+  when: chkrootkit_enabled | bool
+  block:
+    - name: Install chkrootkit
+      community.general.pkgng:
+        name: chkrootkit
+        state: present
+
+    # The port drops 460.chkrootkit into periodic security, which runs it once this knob is set.
+    - name: Enable the daily chkrootkit periodic run
+      community.general.sysrc:
+        name: daily_chkrootkit_enable
+        value: "YES"
+        path: /etc/periodic.conf

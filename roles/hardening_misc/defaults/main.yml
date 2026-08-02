@@ -1,0 +1,10 @@
+---
+hardening_misc_coredumps: true
+hardening_misc_cron_allow: true
+hardening_misc_mail: true
+hardening_misc_msmtp: false           # opt-in; needs smtp_* / vault vars
+hardening_misc_tmp_noexec: false      # opt-in; applies on reboot
+admin_user: acid  # noqa: var-naming[no-role-prefix]
+deploy_user: ansible  # noqa: var-naming[no-role-prefix]
+admin_email: root  # noqa: var-naming[no-role-prefix]
+hardening_misc_cron_allow_extra_users: []

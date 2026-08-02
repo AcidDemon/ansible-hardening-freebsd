@@ -1,0 +1,5 @@
+---
+deploy_user: ansible  # noqa: var-naming[no-role-prefix]
+ssh_2fa_totp_enabled: true
+ssh_2fa_fido2_enabled: true
+ssh_2fa_totp_nullok: true    # users without ~/.google_authenticator are not locked out

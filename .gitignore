@@ -1,0 +1,22 @@
+# Build / runtime artifacts
+.vagrant/
+*.retry
+__pycache__/
+.ansible/
+collections/
+ansible_collections/
+
+# Keys — never commit privates; keep the dir via .gitkeep, allow *.pub
+files/ssh/*
+!files/ssh/.gitkeep
+id_*
+*.pem
+
+# ansible-vault password (never commit)
+.vault-pass
+
+# editor / OS cruft
+*.swp
+*~
+.DS_Store
+.envrc.local

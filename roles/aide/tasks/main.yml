@@ -1,0 +1,76 @@
+---
+- name: Configure AIDE
+  when: aide_enabled | bool
+  block:
+    - name: Install aide
+      community.general.pkgng:
+        name: aide
+        state: present
+
+    # aide links libpcre2; force it current on stale images (ABI: "PCRE2_x required").
+    - name: Ensure aide's PCRE2 runtime dependency is current
+      community.general.pkgng:
+        name: pcre2
+        state: latest
+
+    - name: Probe that the aide binary is runnable (guards against a pkg ABI skew)
+      ansible.builtin.command: aide --version
+      register: aide_probe
+      changed_when: false
+      failed_when: false
+
+    - name: Warn when aide is unusable (pkg ABI skew), DB init skipped
+      ansible.builtin.debug:
+        msg: >-
+          aide binary is not runnable ({{ (aide_probe.stderr | default('')) | trim }});
+          skipping DB init. Reconcile the box's pkg repo (pkg update -f && pkg upgrade)
+          then re-run. The periodic check no-ops until a DB exists.
+      when: aide_probe.rc != 0
+
+    - name: Ensure the AIDE db directory exists
+      ansible.builtin.file:
+        path: /var/db/aide
+        state: directory
+        owner: root
+        group: wheel
+        mode: "0700"
+
+    - name: Deploy aide.conf
+      ansible.builtin.template:
+        src: aide.conf.j2
+        dest: /usr/local/etc/aide.conf
+        owner: root
+        group: wheel
+        mode: "0644"
+
+    - name: Initialise the AIDE database (slow; first run only)
+      ansible.builtin.command: aide --init --config /usr/local/etc/aide.conf
+      args:
+        creates: /var/db/aide/aide.db
+      when:
+        - aide_init | bool
+        - aide_probe.rc == 0
+
+    - name: Promote the freshly built database
+      ansible.builtin.command: mv /var/db/aide/aide.db.new /var/db/aide/aide.db
+      args:
+        removes: /var/db/aide/aide.db.new
+      when:
+        - aide_init | bool
+        - aide_probe.rc == 0
+
+    - name: Ensure the local periodic/security dir exists
+      ansible.builtin.file:
+        path: /usr/local/etc/periodic/security
+        state: directory
+        owner: root
+        group: wheel
+        mode: "0755"
+
+    - name: Deploy the daily periodic AIDE check
+      ansible.builtin.copy:
+        src: 510.aide
+        dest: /usr/local/etc/periodic/security/510.aide
+        owner: root
+        group: wheel
+        mode: "0755"

@@ -1,0 +1,13 @@
+#!/bin/sh
+# Managed by Ansible
+host="$(hostname)"
+{
+  echo "Security posture report for ${host}, $(date)"
+  echo; echo "== Listening sockets (sockstat -46l) =="; sockstat -46l 2>/dev/null
+  echo; echo "== pf rules =="; pfctl -sr 2>/dev/null
+  echo; echo "== pf tables =="; pfctl -sT 2>/dev/null
+  echo; echo "== sshguard table =="; pfctl -t sshguard -T show 2>/dev/null
+  echo; echo "== CrowdSec decisions =="; cscli decisions list 2>/dev/null
+  echo; echo "== pkg audit =="; pkg audit -F 2>/dev/null
+  echo; echo "== recent SSH auth failures =="; grep -iE 'authentication failure|Failed password|Invalid user' /var/log/auth.log 2>/dev/null | tail -n 20
+} | mail -s "[${host}] security posture $(date +%F)" root

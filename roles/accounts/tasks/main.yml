@@ -1,0 +1,62 @@
+---
+- name: Ensure sudo is installed
+  community.general.pkgng:
+    name: sudo
+    state: present
+
+- name: Harden sudo defaults
+  ansible.builtin.copy:
+    dest: /usr/local/etc/sudoers.d/00-hardening
+    content: |
+      Defaults use_pty
+      Defaults logfile="/var/log/sudo.log"
+      Defaults !visiblepw
+      Defaults passwd_timeout=1
+    owner: root
+    group: wheel
+    mode: "0440"
+    validate: "/usr/local/sbin/visudo -cf %s"
+
+- name: Set umask in the login.conf default class
+  ansible.builtin.lineinfile:
+    path: /etc/login.conf
+    regexp: '^\s*:umask=.*$'
+    line: "\t:umask={{ accounts_umask }}:\\"
+    backup: true
+  notify: Rebuild login.conf db
+
+- name: Set password expiry in the login.conf default class (opt-in)
+  ansible.builtin.lineinfile:
+    path: /etc/login.conf
+    regexp: '^\s*:passwordtime=.*$'
+    line: "\t:passwordtime={{ accounts_passwordtime }}:\\"
+    insertafter: '^\s*:umask={{ accounts_umask }}:\\$'
+    backup: true
+  notify: Rebuild login.conf db
+  when: accounts_password_expiry | bool
+
+- name: Confirm su is restricted to the wheel group (FreeBSD default via pam_group)
+  ansible.builtin.command: grep -Eq '^auth[[:space:]]+requisite[[:space:]]+pam_group\.so.*group=wheel' /etc/pam.d/su
+  register: accounts_su_wheel
+  changed_when: false
+  failed_when: false
+
+- name: Assert su-to-wheel is enforced
+  ansible.builtin.assert:
+    that: accounts_su_wheel.rc == 0
+    fail_msg: "/etc/pam.d/su is not restricting su to the wheel group. Restore the stock pam_group line."
+    quiet: true
+  when: accounts_restrict_su | bool
+
+- name: Confirm pam_passwdqc enforces password quality (FreeBSD base default)
+  ansible.builtin.command: grep -Eq 'pam_passwdqc\.so' /etc/pam.d/passwd
+  register: accounts_passwdqc
+  changed_when: false
+  failed_when: false
+
+- name: Assert pam_passwdqc is present
+  ansible.builtin.assert:
+    that: accounts_passwdqc.rc == 0
+    fail_msg: "pam_passwdqc is missing from /etc/pam.d/passwd, password quality is not enforced."
+    quiet: true
+  when: accounts_assert_passwdqc | bool

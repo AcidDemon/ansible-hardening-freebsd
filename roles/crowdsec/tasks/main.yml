@@ -1,0 +1,89 @@
+---
+- name: Configure CrowdSec
+  when: crowdsec_enabled | bool
+  block:
+    - name: Install crowdsec and the firewall bouncer (pf backend auto-configured at install)
+      community.general.pkgng:
+        name:
+          - crowdsec
+          - crowdsec-firewall-bouncer
+        state: present
+
+    # Bouncer's default pf tables (crowdsec-blacklists / crowdsec6-blacklists) match those
+    # base_firewall pre-declares, so no bouncer config edit is needed.
+    - name: Ensure the crowdsec enrich-parsers dir exists
+      ansible.builtin.file:
+        path: /usr/local/etc/crowdsec/parsers/s02-enrich
+        state: directory
+        owner: root
+        group: wheel
+        mode: "0755"
+
+    - name: Whitelist management networks
+      ansible.builtin.template:
+        src: whitelist.yaml.j2
+        dest: /usr/local/etc/crowdsec/parsers/s02-enrich/whitelist.yaml
+        owner: root
+        group: wheel
+        mode: "0644"
+      notify: Reload crowdsec
+
+    - name: Enable crowdsec + firewall bouncer in rc.conf
+      community.general.sysrc:
+        name: "{{ item }}"
+        value: "YES"
+      loop:
+        - crowdsec_enable
+        - crowdsec_firewall_enable
+
+    - name: Ensure crowdsec is running (needed before cscli)
+      ansible.builtin.service:
+        name: crowdsec
+        state: started
+
+    - name: Update CrowdSec hub index
+      ansible.builtin.command: cscli hub update
+      register: cs_hub
+      changed_when: false   # metadata refresh, not a host change
+
+    - name: Check CrowdSec collection status
+      ansible.builtin.command: "cscli collections inspect {{ item }} -o json"
+      register: cs_inspect
+      changed_when: false
+      failed_when: false
+      loop: "{{ crowdsec_collections }}"
+
+    - name: Install CrowdSec collections
+      ansible.builtin.command: "cscli collections install {{ item.item }} --force"
+      register: cs_coll
+      changed_when: true
+      failed_when: cs_coll.rc != 0
+      loop: "{{ cs_inspect.results }}"
+      vars:
+        # Unparseable cscli output falls back to an empty dict, which forces a safe reinstall.
+        _cs_info: "{{ (item.stdout | default('') | from_json) if (item.stdout | default('')) | length > 0 else {} }}"
+      when: >
+        item.rc != 0 or
+        not _cs_info.get('up_to_date', false) or
+        _cs_info.get('tainted', false)
+      notify: Reload crowdsec
+
+    - name: Ensure the firewall bouncer is running
+      ansible.builtin.service:
+        name: crowdsec_firewall
+        state: started
+
+    - name: Enroll the engine in the CrowdSec console
+      ansible.builtin.command: "cscli console enroll {{ vault_crowdsec_enroll_key }}"
+      register: cs_enroll
+      no_log: true
+      changed_when: >
+        'Enrolled' in cs_enroll.stdout or
+        ('enroll' in cs_enroll.stdout and 'already' not in cs_enroll.stdout)
+      failed_when:
+        - cs_enroll.rc != 0
+        - "'already enrolled' not in (cs_enroll.stdout + cs_enroll.stderr)"
+      when:
+        - crowdsec_console_enroll | bool
+        - vault_crowdsec_enroll_key | default('') | length > 0
+      notify: Restart crowdsec
