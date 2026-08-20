@@ -4,4 +4,20 @@ sysctl_hardening_enabled: true
 sysctl_hardening_settings:
   security.bsd.hardlink_check_uid: "1"
   security.bsd.hardlink_check_gid: "1"
+  # Hide processes running inside jails from the host's unprivileged users.
+  # Matters most on a jail host, where it is otherwise 1 by default.
+  security.bsd.see_jail_proc: "0"
   # check_interface omitted: readback isn't idempotent on FreeBSD 14, and pf antispoof covers it.
+  #
+  # kern.randompid is handled separately below, not here: the kernel replaces the
+  # value you write with a random modulus of its own, so writing 1 reads back as
+  # something like 1123 and this dict would report changed on every run.
+  #
+  # security.bsd.allow_destructive_dtrace is deliberately absent. The MIB only
+  # exists once the dtrace modules are loaded, so setting it on a host that never
+  # loads them fails with "unknown oid" while protecting nothing. Not loading
+  # dtrace is the control.
+
+# bsdinstall calls this random_pid. Persisted for the next boot and applied now
+# only when it is still off, because a live readback never matches what you set.
+sysctl_hardening_randompid: true

@@ -11,3 +11,29 @@
   loop_control:
     label: "{{ item.key }}"
   when: sysctl_hardening_enabled | bool
+
+- name: Persist PID randomisation for the next boot
+  ansible.posix.sysctl:
+    name: kern.randompid
+    value: "1"
+    sysctl_file: /etc/sysctl.conf
+    # Deliberately not applied here: the kernel substitutes its own random
+    # modulus, so an applied value never reads back as the one written and
+    # the task would report changed forever. The file entry is what is
+    # managed; the task below turns it on for the current boot.
+    sysctl_set: false
+    reload: false
+  when: sysctl_hardening_randompid | bool
+
+- name: Read the running PID randomisation setting
+  ansible.builtin.command: sysctl -n kern.randompid
+  register: _randompid
+  changed_when: false
+  when: sysctl_hardening_randompid | bool
+
+- name: Enable PID randomisation for the current boot
+  ansible.builtin.command: sysctl kern.randompid=1
+  changed_when: true
+  when:
+    - sysctl_hardening_randompid | bool
+    - _randompid.stdout | default('0') | trim == '0'

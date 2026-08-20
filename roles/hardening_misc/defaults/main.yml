@@ -4,7 +4,11 @@ hardening_misc_cron_allow: true
 hardening_misc_mail: true
 hardening_misc_msmtp: false           # opt-in; needs smtp_* / vault vars
 hardening_misc_tmp_noexec: false      # opt-in; applies on reboot
+hardening_misc_clear_tmp: true        # bsdinstall's clear_tmp, independent of the above
 admin_user: acid  # noqa: var-naming[no-role-prefix]
 deploy_user: ansible  # noqa: var-naming[no-role-prefix]
+# 'root' means "leave local mail alone". Any other value writes an alias, and on
+# FreeBSD 14+ that means dma tries REMOTE delivery: set hardening_misc_msmtp or a
+# dma smarthost too, or the mail is generated and never arrives.
 admin_email: root  # noqa: var-naming[no-role-prefix]
 hardening_misc_cron_allow_extra_users: []

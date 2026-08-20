@@ -33,7 +33,14 @@
     owner: root
     group: wheel
     mode: "0644"
-  when: hardening_misc_mail | bool
+  # Skipped when admin_email is still the default. FreeBSD 14+ delivers through
+  # dma(8), which resolves "root: root" as a self-referential alias and drops the
+  # message with "sendmail: no recipients" - silently killing every periodic
+  # report and every cron mail on the box. With no alias at all, root's mail goes
+  # to /var/mail/root as it should.
+  when:
+    - hardening_misc_mail | bool
+    - admin_email != 'root'
   notify: Rebuild aliases
 
 - name: External SMTP relay via msmtp (opt-in)
@@ -63,7 +70,11 @@
         opts: "rw,mode=1777,nosuid,nodev,noexec"
         state: present
 
-    - name: Clear /tmp on boot
-      community.general.sysrc:
-        name: clear_tmp_enable
-        value: "YES"
+# bsdinstall calls this clear_tmp. Independent of the tmpfs option above: a
+# tmpfs /tmp is empty after a reboot anyway, but a disk-backed /tmp is not, and
+# that is the case where clearing it actually does something.
+- name: Clear /tmp on boot
+  community.general.sysrc:
+    name: clear_tmp_enable
+    value: "YES"
+  when: hardening_misc_clear_tmp | bool
