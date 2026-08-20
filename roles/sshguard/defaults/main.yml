@@ -4,3 +4,8 @@ sshguard_whitelist_cidrs: "{{ management_cidrs | default([]) }}"  # noqa: var-na
 sshguard_blocktime: 3600     # BLOCK_TIME seconds
 sshguard_threshold: 30       # attack score before a block, not a hit count
 sshguard_detection_time: 1800
+
+# Logs sshguard tails. A jail's sshd logs to the jail's own auth.log, which the
+# host path never sees, so a jail host adds /jails/<name>/var/log/auth.log here.
+sshguard_log_paths:
+  - /var/log/auth.log

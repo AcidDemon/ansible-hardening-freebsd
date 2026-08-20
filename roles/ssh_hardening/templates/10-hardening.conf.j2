@@ -12,8 +12,8 @@ HostKeyAlgorithms {{ ssh_host_key_algorithms }}
 MaxAuthTries 3
 MaxSessions 4
 LoginGraceTime 30
-ClientAliveInterval 300
-ClientAliveCountMax 2
+ClientAliveInterval {{ ssh_client_alive_interval }}
+ClientAliveCountMax {{ ssh_client_alive_count_max }}
 X11Forwarding no
 AllowTcpForwarding no
 AllowAgentForwarding no

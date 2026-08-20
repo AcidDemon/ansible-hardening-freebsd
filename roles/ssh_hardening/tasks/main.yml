@@ -15,7 +15,7 @@
     name: "{{ item }}"
     groups: "{{ ssh_allow_groups[0] }}"
     append: true
-  loop: "{{ [admin_user | default(''), deploy_user | default(''), ansible_user | default('')] | select('string') | reject('equalto', '') | unique }}"
+  loop: "{{ ssh_allow_group_members | select('string') | reject('equalto', '') | unique }}"
   when: item in ansible_facts.getent_passwd
 
 - name: Resolve the connecting user's groups

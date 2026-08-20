@@ -3,3 +3,9 @@ deploy_user: ansible  # noqa: var-naming[no-role-prefix]
 ssh_2fa_totp_enabled: true
 ssh_2fa_fido2_enabled: true
 ssh_2fa_totp_nullok: true    # users without ~/.google_authenticator are not locked out
+
+# Accounts that authenticate by key alone. Service accounts (backup ingest,
+# monitoring, CI) have no way to answer a TOTP prompt, and nullok only hides
+# that until it is set false. deploy_user is always exempt.
+ssh_2fa_exempt_users: []
+ssh_2fa_exempt_groups: []

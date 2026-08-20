@@ -5,3 +5,7 @@ crowdsec_collections:
   - crowdsecurity/linux
 crowdsec_whitelist_cidrs: "{{ management_cidrs | default([]) }}"  # noqa: var-naming[no-role-prefix]
 crowdsec_console_enroll: true
+
+# Extra log files for crowdsec to acquire, on top of whatever the installed
+# collections pick up. Same jail blind spot as sshguard_log_paths.
+crowdsec_acquis_paths: []

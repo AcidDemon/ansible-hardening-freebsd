@@ -65,6 +65,26 @@ FIDO2, on the workstation, then add the pubkey to the host and the user to `fido
 
 Once everyone is enrolled, set `ssh_2fa_totp_nullok: false` and re-run.
 
+### Service accounts
+
+`nullok` is what keeps unattended accounts working before that flip, and it stops
+protecting them the moment you set it false. Anything that authenticates by key and
+cannot answer a TOTP prompt - backup ingest, monitoring, CI - belongs in
+`ssh_2fa_exempt_users` or `ssh_2fa_exempt_groups`, which render their own key-only
+`Match` stanzas. `deploy_user` is always exempt. Such accounts also need to be in
+`ssh_allow_group_members`, or `AllowGroups` shuts them out before 2FA is even reached.
+
+## Jail hosts
+
+A jail's sshd logs to the jail's own `auth.log`, which neither watcher sees by default.
+Add the paths explicitly: `sshguard_log_paths` (appended to sshguard's `LOGREADER`) and
+`crowdsec_acquis_paths` (written to `acquis.d/10-extra.yaml`). Bans still land in base's
+shared pf tables, so a ban applies host-wide, jails included.
+
+`ssh_client_alive_interval` / `ssh_client_alive_count_max` override the idle reaper.
+The default kills a session after ~10 minutes without SSH-layer traffic, which is short
+for a long `zfs recv` or a stalled backup.
+
 ## Lockout recovery
 
 From the console:

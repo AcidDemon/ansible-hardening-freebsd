@@ -4,6 +4,18 @@ ssh_allow_groups:
   - sshusers
 ssh_prune_moduli: true
 
+# Idle-session reaper. Long-running non-interactive sessions (backup ingest,
+# zfs recv) can go quiet at the SSH layer for longer than the default window.
+ssh_client_alive_interval: 300  # noqa: var-naming[no-role-prefix]
+ssh_client_alive_count_max: 2  # noqa: var-naming[no-role-prefix]
+
+# Users self-healed into ssh_allow_groups[0] before AllowGroups goes live.
+# Service accounts that log in over SSH belong here, or AllowGroups locks them out.
+ssh_allow_group_members:  # noqa: var-naming[no-role-prefix]
+  - "{{ admin_user | default('') }}"
+  - "{{ deploy_user | default('') }}"
+  - "{{ ansible_user | default('') }}"
+
 # Crypto floor ~OpenSSH 7.2 (2016): curve25519, aes-gcm, chacha20, rsa-sha2, ed25519.
 # For a legacy client set ssh_pin_crypto: false, or override a list below.
 ssh_pin_crypto: true

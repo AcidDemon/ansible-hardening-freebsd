@@ -5,12 +5,28 @@ AuthenticationMethods publickey,keyboard-interactive
 {% else %}
 AuthenticationMethods publickey
 {% endif %}
+{% set _exempt_users = (ssh_2fa_exempt_users + [deploy_user | default('')]) | select('string') | reject('equalto', '') | unique %}
+{% if _exempt_users | length > 0 %}
 
-Match User {{ deploy_user }}
+# Key-only accounts. Listed before fido2users so a service account that also
+# lands in that group is not asked for a token touch.
+Match User {{ _exempt_users | join(',') }}
     AuthenticationMethods publickey
+{% endif %}
+{% for g in ssh_2fa_exempt_groups %}
 
+Match Group {{ g }}
+    AuthenticationMethods publickey
+{% endfor %}
 {% if ssh_2fa_fido2_enabled %}
+
 Match Group fido2users
     AuthenticationMethods publickey
     PubkeyAuthOptions verify-required
 {% endif %}
+
+# Leave the file at top level rather than inside the last Match block above.
+# Current OpenSSH restores the includer's match context after an Include, so
+# this is belt-and-braces, not a fix - older versions did leak, and it keeps the
+# drop-in self-contained for anything that concatenates rather than includes.
+Match all

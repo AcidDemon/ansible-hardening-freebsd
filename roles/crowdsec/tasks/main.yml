@@ -28,6 +28,25 @@
         mode: "0644"
       notify: Reload crowdsec
 
+    - name: Ensure the crowdsec acquisition drop-in dir exists
+      ansible.builtin.file:
+        path: /usr/local/etc/crowdsec/acquis.d
+        state: directory
+        owner: root
+        group: wheel
+        mode: "0755"
+      when: crowdsec_acquis_paths | length > 0
+
+    - name: Acquire extra log files (e.g. jail auth.log)
+      ansible.builtin.template:
+        src: acquis-extra.yaml.j2
+        dest: /usr/local/etc/crowdsec/acquis.d/10-extra.yaml
+        owner: root
+        group: wheel
+        mode: "0644"
+      when: crowdsec_acquis_paths | length > 0
+      notify: Reload crowdsec
+
     - name: Enable crowdsec + firewall bouncer in rc.conf
       community.general.sysrc:
         name: "{{ item }}"

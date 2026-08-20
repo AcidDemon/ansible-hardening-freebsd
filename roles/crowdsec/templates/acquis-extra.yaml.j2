@@ -1,0 +1,7 @@
+# Managed by Ansible
+filenames:
+{% for path in crowdsec_acquis_paths %}
+  - {{ path }}
+{% endfor %}
+labels:
+  type: syslog
