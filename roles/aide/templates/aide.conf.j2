@@ -1,7 +1,10 @@
 # Managed by Ansible
-database=file:/var/db/aide/aide.db
-database_out=file:/var/db/aide/aide.db.new
-database_new=file:/var/db/aide/aide.db.new
+# database_in, not database: AIDE 0.19 removed the old name and rejects it with
+# "unexpected character". Values must be URLs, so a bare path fails too with
+# "unknown URL-type" - hence file:// followed by the absolute path.
+database_in=file:///var/db/aide/aide.db
+database_out=file:///var/db/aide/aide.db.new
+database_new=file:///var/db/aide/aide.db.new
 gzip_dbout=no
 
 Checksums = sha256+sha512
