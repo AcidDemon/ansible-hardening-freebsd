@@ -4,6 +4,9 @@ tls on
 tls_starttls on
 auth on
 logfile /var/log/msmtp.log
+# msmtp does no alias expansion of its own and ignores /etc/mail/aliases, so
+# without this, mail addressed to "root" is handed to the relay verbatim.
+aliases /usr/local/etc/aliases
 
 account default
 host {{ smtp_host }}

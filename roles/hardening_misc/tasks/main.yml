@@ -59,6 +59,39 @@
         group: wheel
         mode: "0600"
 
+    - name: Deploy the msmtp alias map
+      ansible.builtin.template:
+        src: msmtp-aliases.j2
+        dest: /usr/local/etc/aliases
+        owner: root
+        group: wheel
+        mode: "0644"
+
+    - name: Check the msmtp configuration before making it the system mailer
+      ansible.builtin.command: msmtp --pretend --file=/usr/local/etc/msmtprc
+      register: _msmtp_check
+      changed_when: false
+      failed_when: _msmtp_check.rc != 0
+
+    # Installing msmtp changes nothing on its own: FreeBSD 14+ ships dma(8) as
+    # the mailer and mailer.conf is what decides. Without this the relay is
+    # configured, unused, and every report still goes to dma.
+    - name: Route the system mailer through msmtp
+      ansible.builtin.copy:
+        dest: /etc/mail/mailer.conf
+        content: |
+          # Managed by Ansible
+          sendmail	/usr/local/bin/msmtp
+          send-mail	/usr/local/bin/msmtp
+          # msmtp has no queue and no alias database, so these two have nothing
+          # to do. true keeps callers such as newaliases(1) from failing.
+          mailq	/usr/bin/true
+          newaliases	/usr/bin/true
+        owner: root
+        group: wheel
+        mode: "0644"
+        backup: true
+
 - name: Use a noexec tmpfs /tmp (opt-in; applies on reboot)
   when: hardening_misc_tmp_noexec | bool
   block:
