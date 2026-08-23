@@ -1,9 +1,18 @@
 ---
-- name: Reload crowdsec
-  ansible.builtin.service:
-    name: crowdsec
-    state: reloaded
-
+# Restart, not reload. `service crowdsec reload` HUPs the pid from the pidfile,
+# so against a stopped daemon it runs `kill -HUP ''` and dies with "illegal
+# process id" - taking every handler queued behind it with it, which on a
+# flush_handlers before a connectivity probe means the sshd reload never
+# happens and the probe tests a config that was never loaded.
+#
+# A daemon can legitimately be down here: crowdsec's watcher talks to its own
+# LAPI on 127.0.0.1:8080 at startup, and with net.inet.tcp.blackhole=2 a
+# connection to a not-yet-listening port times out rather than being refused,
+# which turns a millisecond retry into a fatal. rc.d restarts it, but a handler
+# firing inside that window finds nothing to signal.
+#
+# restart works whether or not it is running, and crowdsec re-reads acquisition
+# offsets on start, so the cost is a few seconds of not watching.
 - name: Restart crowdsec
   ansible.builtin.service:
     name: crowdsec

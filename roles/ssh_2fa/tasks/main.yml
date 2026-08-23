@@ -41,6 +41,27 @@
   when: ssh_2fa_totp_enabled | bool
   notify: Reload sshd
 
+# nullok makes pam_google_authenticator DECLINE for a user with no secret file,
+# not succeed - it returns PAM_IGNORE. The task above comments out the only
+# other auth line, so an un-enrolled user leaves a stack where every module
+# ignored, and PAM fails a stack that nothing succeeded in. The result is
+# "Permission denied (keyboard-interactive)" for exactly the users nullok
+# claims to spare.
+#
+# pam_permit gives the stack something that succeeds. It cannot weaken the
+# other outcomes: a wrong code, or a missing secret with nullok off, fails the
+# `required` google_authenticator line, and a required failure stands however
+# many modules succeed after it.
+- name: Let un-enrolled users past the TOTP stack when nullok is set
+  ansible.builtin.lineinfile:
+    path: /etc/pam.d/sshd
+    regexp: '^auth\s+required\s+pam_permit\.so'
+    line: "auth required pam_permit.so"
+    insertafter: '^auth\s+required\s+\S*pam_google_authenticator\.so'
+    firstmatch: true
+  when: ssh_2fa_totp_enabled | bool
+  notify: Reload sshd
+
 - name: Deploy the 2FA sshd drop-in
   ansible.builtin.template:
     src: 20-2fa.conf.j2

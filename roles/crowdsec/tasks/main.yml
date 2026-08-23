@@ -26,7 +26,7 @@
         owner: root
         group: wheel
         mode: "0644"
-      notify: Reload crowdsec
+      notify: Restart crowdsec
 
     - name: Ensure the crowdsec acquisition drop-in dir exists
       ansible.builtin.file:
@@ -45,7 +45,7 @@
         group: wheel
         mode: "0644"
       when: crowdsec_acquis_paths | length > 0
-      notify: Reload crowdsec
+      notify: Restart crowdsec
 
     - name: Enable crowdsec + firewall bouncer in rc.conf
       community.general.sysrc:
@@ -85,7 +85,7 @@
         item.rc != 0 or
         not _cs_info.get('up_to_date', false) or
         _cs_info.get('tainted', false)
-      notify: Reload crowdsec
+      notify: Restart crowdsec
 
     - name: Ensure the firewall bouncer is running
       ansible.builtin.service:
