@@ -25,11 +25,11 @@ report. Runs after `ansible-base-freebsd`, which owns pf, users, and time.
 | `sshguard` | log-driven SSH banning through base's pf `<sshguard>` table |
 | `sysctl_hardening` | posture sysctls layered over base's baseline |
 | `auditd` | OpenBSM audit classes |
-| `aide` | file-integrity database with a daily periodic check |
+| `aide` | file-integrity database with a daily periodic check that says when the baseline itself is broken |
 | `lynis` | on-demand system audit |
 | `hardening_misc` | coredumps off, cron/at allowlists, optional noexec `/tmp` and mail relay |
 | `rootkit_scanners` | chkrootkit |
-| `security_reporting` | daily posture report (sockstat, pfctl, cscli, pkg audit) |
+| `security_reporting` | daily posture report (sockstat, pfctl, cscli, pkg audit), every section labelled when empty |
 | `ssh_2fa` | TOTP and FIDO2 tiers; the deploy account stays key-only |
 
 ## Run
@@ -84,6 +84,21 @@ shared pf tables, so a ban applies host-wide, jails included.
 `ssh_client_alive_interval` / `ssh_client_alive_count_max` override the idle reaper.
 The default kills a session after ~10 minutes without SSH-layer traffic, which is short
 for a long `zfs recv` or a stalled backup.
+
+## Nightly reports
+
+base sets `security_show_success=NO`, so a periodic security check that exits 0 prints
+nothing. The two drop-ins here follow that contract: `510.aide` exits 1 on a clean run
+and 3 when it found differences, when there is no database, or when the database is too
+small to be a real baseline. That last case matters because AIDE 0.19.0 through 0.19.2
+on a ZFS root writes a database holding one entry and then reports "no differences"
+forever (aide/aide#208). `aide_min_entries` sets the floor, and the role rebuilds any
+database that falls under it.
+
+The posture report labels every empty section in words instead of printing a bare
+heading, and it keeps stderr in the mail. `cscli` writes "No active decisions" there,
+so the section used to come out blank on exactly the days there was nothing to worry
+about.
 
 ## Lockout recovery
 

@@ -1,13 +1,47 @@
 #!/bin/sh
 # Managed by Ansible
+#
+# Every section prints something. A heading with nothing under it cannot be told
+# apart from a heading whose command died, so stderr stays in the report instead
+# of going to /dev/null, and an empty result is spelled out in words.
 host="$(hostname)"
+
+# $1 is what "empty" means for this section, in words.
+section() {
+    empty=$1
+    out=$(cat)
+    if [ -n "$out" ]; then
+        printf '%s\n' "$out"
+    else
+        printf '  %s\n' "$empty"
+    fi
+}
+
 {
   echo "Security posture report for ${host}, $(date)"
-  echo; echo "== Listening sockets (sockstat -46l) =="; sockstat -46l 2>/dev/null
-  echo; echo "== pf rules =="; pfctl -sr 2>/dev/null
-  echo; echo "== pf tables =="; pfctl -sT 2>/dev/null
-  echo; echo "== sshguard table =="; pfctl -t sshguard -T show 2>/dev/null
-  echo; echo "== CrowdSec decisions =="; cscli decisions list 2>/dev/null
-  echo; echo "== pkg audit =="; pkg audit -F 2>/dev/null
-  echo; echo "== recent SSH auth failures =="; grep -iE 'authentication failure|Failed password|Invalid user' /var/log/auth.log 2>/dev/null | tail -n 20
+
+  echo; echo "== Listening sockets (sockstat -46l) =="
+  sockstat -46l 2>&1 | section "nothing is listening on IPv4 or IPv6"
+
+  echo; echo "== pf rules =="
+  pfctl -sr 2>&1 | section "no pf rules are loaded"
+
+  echo; echo "== pf tables =="
+  pfctl -sT 2>&1 | section "no pf tables are defined"
+
+  # An empty sshguard table is the normal state on a box nobody is attacking.
+  echo; echo "== sshguard table =="
+  pfctl -t sshguard -T show 2>&1 | section "sshguard is blocking no addresses"
+
+  # cscli writes "No active decisions" to stderr, which is why this section used
+  # to come out blank rather than saying so.
+  echo; echo "== CrowdSec decisions =="
+  cscli decisions list 2>&1 | section "CrowdSec has no active decisions"
+
+  echo; echo "== pkg audit =="
+  pkg audit -F 2>&1 | section "pkg audit said nothing, so the vulnerability database was probably not fetched"
+
+  echo; echo "== recent SSH auth failures =="
+  grep -iE 'authentication failure|Failed password|Invalid user' /var/log/auth.log 2>&1 |
+      tail -n 20 | section "no SSH auth failures in the current /var/log/auth.log"
 } | mail -s "[${host}] security posture $(date +%F)" root

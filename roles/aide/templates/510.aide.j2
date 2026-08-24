@@ -1,0 +1,38 @@
+#!/bin/sh
+# Managed by Ansible
+#
+# periodic(8) reads the exit status, not the text. 0 is masked when
+# security_show_success is NO, and 2 means "bad configuration" and is masked by
+# default, which is exactly where aide's own bit-coded status puts a "files were
+# removed" result. So translate: 1 for routine output, 3 for anything a human
+# has to look at, which is above the range periodic can mask.
+db=/var/db/aide/aide.db
+
+if [ ! -f "$db" ]; then
+    echo ""
+    echo "AIDE file-integrity check: no database at $db, so nothing is being checked."
+    exit 3
+fi
+
+# A database that was never populated reports "no differences" forever, which is
+# the most expensive kind of quiet. AIDE 0.19.0 through 0.19.2 on a ZFS root
+# cannot read the traversal root's ACL, skips recursion, and writes a database
+# holding one entry (aide/aide#208). Counting entries works only because
+# aide.conf sets gzip_dbout=no.
+entries=$(grep -c '^/' "$db" 2>/dev/null)
+if [ "${entries:-0}" -lt {{ aide_min_entries }} ]; then
+    echo ""
+    echo "AIDE file-integrity check: the database holds ${entries:-0} entries, so it is"
+    echo "  broken rather than clean. Wants security/aide 0.19.3 or newer, which is on"
+    echo "  the latest pkg branch and may not be on quarterly. Upgrade, then re-run the"
+    echo "  aide role to rebuild the baseline."
+    exit 3
+fi
+
+echo ""
+echo "AIDE file-integrity check:"
+aide --check --config /usr/local/etc/aide.conf
+rc=$?
+[ "$rc" -eq 0 ] || exit 3
+echo "  no differences against the baseline ($entries entries)"
+exit 1

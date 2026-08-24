@@ -9,6 +9,7 @@
         owner: root
         group: wheel
         mode: "0750"
+        validate: "/bin/sh -n %s"
 
     - name: Schedule the daily posture report
       ansible.builtin.cron:

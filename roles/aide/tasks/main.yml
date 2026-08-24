@@ -2,10 +2,13 @@
 - name: Configure AIDE
   when: aide_enabled | bool
   block:
+    # latest, not present: 0.19.0 to 0.19.2 cannot walk a ZFS root and silently
+    # build an empty database (aide/aide#208). 0.19.3 fixed it, and pinning a
+    # version here would only rot.
     - name: Install aide
       community.general.pkgng:
         name: aide
-        state: present
+        state: latest
 
     # aide links libpcre2; force it current on stale images (ABI: "PCRE2_x required").
     - name: Ensure aide's PCRE2 runtime dependency is current
@@ -18,6 +21,7 @@
       register: aide_probe
       changed_when: false
       failed_when: false
+      check_mode: false   # every later `when` reads aide_probe.rc
 
     - name: Warn when aide is unusable (pkg ABI skew), DB init skipped
       ansible.builtin.debug:
@@ -42,6 +46,24 @@
         owner: root
         group: wheel
         mode: "0644"
+
+    - name: Count the entries in the existing AIDE database
+      ansible.builtin.command: grep -c "^/" /var/db/aide/aide.db
+      register: aide_entries
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    # The init task below is guarded by `creates:`, so a database this broken
+    # would otherwise be preserved forever and go on reporting no differences.
+    - name: Discard a database too small to be a real baseline
+      ansible.builtin.file:
+        path: /var/db/aide/aide.db
+        state: absent
+      when:
+        - aide_init | bool
+        - aide_probe.rc == 0          # never bin a good baseline aide cannot rebuild
+        - (aide_entries.stdout | default('0') | int) < aide_min_entries
 
     - name: Initialise the AIDE database (slow; first run only)
       ansible.builtin.command: aide --init --config /usr/local/etc/aide.conf
@@ -68,9 +90,10 @@
         mode: "0755"
 
     - name: Deploy the daily periodic AIDE check
-      ansible.builtin.copy:
-        src: 510.aide
+      ansible.builtin.template:
+        src: 510.aide.j2
         dest: /usr/local/etc/periodic/security/510.aide
         owner: root
         group: wheel
         mode: "0755"
+        validate: "/bin/sh -n %s"

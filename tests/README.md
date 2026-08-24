@@ -36,8 +36,9 @@ sysrc -n sshguard_enable crowdsec_enable crowdsec_firewall_enable auditd_enable
 # OpenBSM
 service auditd status && auditctl -l 2>/dev/null; praudit -l /dev/auditpipe & sleep 1; kill %1 2>/dev/null
 # integrity + reporting
-ls -l /var/db/aide/aide.db 2>/dev/null; which lynis chkrootkit
-ls /usr/local/etc/periodic/*/*.aide /usr/local/etc/periodic/daily/*security-report* 2>/dev/null
+ls -l /var/db/aide/aide.db 2>/dev/null; grep -c '^/' /var/db/aide/aide.db
+which lynis chkrootkit; ls -l /usr/local/sbin/security-report.sh
+/usr/local/etc/periodic/security/510.aide; echo "rc=$? (1 clean, 3 needs a human)"
 # account policy
 grep -q umask /etc/login.conf && echo "login.conf policy present"
 # rollback disarmed (no leftover at job)
