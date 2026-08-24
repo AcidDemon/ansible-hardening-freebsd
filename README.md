@@ -95,6 +95,11 @@ on a ZFS root writes a database holding one entry and then reports "no differenc
 forever (aide/aide#208). `aide_min_entries` sets the floor, and the role rebuilds any
 database that falls under it.
 
+The package is installed `state: present`, not `state: latest`. Which pkg branch a
+host follows decides whether 0.19.3 is reachable at all, and that is not a role's
+call: quarterly carried only 0.19.2 through 2026Q3. On a box that cannot reach the
+fix, the nightly mail says so rather than the play pretending it fixed something.
+
 The posture report labels every empty section in words instead of printing a bare
 heading, and it keeps stderr in the mail. `cscli` writes "No active decisions" there,
 so the section used to come out blank on exactly the days there was nothing to worry

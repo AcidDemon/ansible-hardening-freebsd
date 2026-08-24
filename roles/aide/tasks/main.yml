@@ -2,13 +2,17 @@
 - name: Configure AIDE
   when: aide_enabled | bool
   block:
-    # latest, not present: 0.19.0 to 0.19.2 cannot walk a ZFS root and silently
-    # build an empty database (aide/aide#208). 0.19.3 fixed it, and pinning a
-    # version here would only rot.
+    # Needs 0.19.3 or newer on a ZFS root: 0.19.0 through 0.19.2 cannot read the
+    # traversal root's ACL, skip recursion, and write an empty database
+    # (aide/aide#208). Deliberately not state: latest. Which pkg branch a host
+    # follows is a policy decision no role should make, quarterly carried only
+    # 0.19.2 through 2026Q3, and state: latest fights a `pkg lock` holding a
+    # hand-installed 0.19.3. 510.aide reports the broken baseline nightly
+    # instead, which is the honest answer when the repo has no fix to offer.
     - name: Install aide
       community.general.pkgng:
         name: aide
-        state: latest
+        state: present
 
     # aide links libpcre2; force it current on stale images (ABI: "PCRE2_x required").
     - name: Ensure aide's PCRE2 runtime dependency is current
