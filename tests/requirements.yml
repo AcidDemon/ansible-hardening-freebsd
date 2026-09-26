@@ -5,6 +5,6 @@
 collections:
   - name: community.general
   - name: ansible.posix
-  - name: git+ssh://git@github.com/AcidDemon/ansible-base-freebsd.git
+  - name: git+https://github.com/AcidDemon/ansible-base-freebsd.git
     type: git
     version: v0.1.0
