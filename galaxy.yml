@@ -4,7 +4,7 @@ name: hardening_freebsd
 version: 0.2.4
 readme: README.md
 authors:
-  - AcidDemon <c.schlueter@acidnetworks.net>
+  - AcidDemon <ansible@invz.cc>
 description: >-
   FreeBSD hardening layer: SSH hardening + 2FA, OpenBSM audit, AIDE, CrowdSec,
   sshguard, login.conf account policy, chkrootkit and Lynis, with an at(1)
