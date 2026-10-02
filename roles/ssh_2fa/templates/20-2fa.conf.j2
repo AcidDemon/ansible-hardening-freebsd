@@ -6,10 +6,16 @@ AuthenticationMethods publickey,keyboard-interactive
 AuthenticationMethods publickey
 {% endif %}
 {% set _exempt_users = (ssh_2fa_exempt_users + [deploy_user | default('')]) | select('string') | reject('equalto', '') | unique %}
+{% if ssh_2fa_deploy_from | length > 0 %}
+
+# Key-only and NOPASSWD, so pinned to ssh_2fa_deploy_from. AllowUsers refuses any
+# other source before authentication starts, whatever nullok says.
+Match User {{ deploy_user }}
+    AllowUsers {{ deploy_user }}@{{ ssh_2fa_deploy_from | join(' ' ~ deploy_user ~ '@') }}
+{% endif %}
 {% if _exempt_users | length > 0 %}
 
-# Key-only accounts. Listed before fido2users so a service account that also
-# lands in that group is not asked for a token touch.
+# Key-only accounts. The fido2users block below excludes them as well.
 Match User {{ _exempt_users | join(',') }}
     AuthenticationMethods publickey
 {% endif %}
@@ -20,9 +26,10 @@ Match Group {{ g }}
 {% endfor %}
 {% if ssh_2fa_fido2_enabled %}
 
-Match Group fido2users
+Match Group fido2users User *{% for u in _exempt_users %},!{{ u }}{% endfor +%}
     AuthenticationMethods publickey
     PubkeyAuthOptions verify-required
+    PubkeyAcceptedAlgorithms sk-ssh-ed25519@openssh.com
 {% endif %}
 
 # Leave the file at top level rather than inside the last Match block above.

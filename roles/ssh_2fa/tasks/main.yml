@@ -22,6 +22,61 @@
     mode: "0644"
   when: ssh_2fa_totp_enabled | bool
 
+# With nullok off, an account without a usable secret fails keyboard-interactive,
+# and verify_conn cannot see that: it reconnects as the deploy account, which is
+# exempt. pam_google_authenticator also rejects a secret the account does not own
+# or that group or others can open, nullok or not. So refuse here, before sshd or
+# PAM change.
+# ponytail: checks ssh_allow_group_members by name. It misses an account put in
+# the allow group by hand, and refuses one exempted only through
+# ssh_2fa_exempt_groups or fido2users. Resolve groups with getent if that matters.
+- name: Find the TOTP secret of every account that will be asked for a code
+  ansible.builtin.stat:
+    path: "~{{ item }}/.google_authenticator"
+    get_checksum: false
+  loop: >-
+    {{ ssh_allow_group_members | default([]) | select('string') | reject('equalto', '')
+       | difference(ssh_2fa_exempt_users + [deploy_user | default('')]) }}
+  register: ssh_2fa_secrets
+  when:
+    - ssh_2fa_totp_enabled | bool
+    - not ssh_2fa_totp_nullok | bool
+
+- name: Refuse to drop nullok while an account is not enrolled
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists
+      - item.stat.pw_name == item.item
+      - item.stat.mode in ['0400', '0600']
+    fail_msg: >-
+      {{ item.item }} has no usable ~/.google_authenticator (missing, wrong owner,
+      or mode {{ item.stat.mode | default('n/a') }}). With nullok off sshd would refuse
+      this account. Enrol it, exempt it, or keep ssh_2fa_totp_nullok true.
+    quiet: true
+  loop: "{{ ssh_2fa_secrets.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when:
+    - ssh_2fa_totp_enabled | bool
+    - not ssh_2fa_totp_nullok | bool
+
+- name: Deploy the 2FA sshd drop-in
+  ansible.builtin.template:
+    src: 20-2fa.conf.j2
+    dest: /etc/ssh/sshd_config.d/20-2fa.conf
+    owner: root
+    group: wheel
+    mode: "0644"
+    validate: "/usr/sbin/sshd -t -f %s"
+  notify: Reload sshd
+
+# Load the drop-in before the PAM edits below. PAM is read per connection, so
+# those edits are live at once, while a drop-in waits for the reload. In between,
+# 10-hardening.conf alone requires no key, and the nullok + pam_permit stack
+# passes an un-enrolled account on an empty prompt.
+- name: Load the 2FA drop-in before PAM stops asking for a password
+  ansible.builtin.meta: flush_handlers
+
 # Comment out FreeBSD's password auth line (pam_unix / include system) so kbd-interactive is TOTP-only. nullok spares un-enrolled users.
 - name: Disable the default password auth stack in sshd PAM (TOTP-only kbd-interactive)
   ansible.builtin.replace:
@@ -52,6 +107,12 @@
 # other outcomes: a wrong code, or a missing secret with nullok off, fails the
 # `required` google_authenticator line, and a required failure stands however
 # many modules succeed after it.
+#
+# Its own outcome is no credential at all: with nullok, an un-enrolled account
+# passes keyboard-interactive on an empty prompt. That is safe only while
+# 20-2fa.conf demands a key first, which is why the drop-in goes live before
+# these edits. Strip the drop-in but leave this stack, and stock sshd lets that
+# account in with nothing.
 - name: Let un-enrolled users past the TOTP stack when nullok is set
   ansible.builtin.lineinfile:
     path: /etc/pam.d/sshd
@@ -60,14 +121,4 @@
     insertafter: '^auth\s+required\s+\S*pam_google_authenticator\.so'
     firstmatch: true
   when: ssh_2fa_totp_enabled | bool
-  notify: Reload sshd
-
-- name: Deploy the 2FA sshd drop-in
-  ansible.builtin.template:
-    src: 20-2fa.conf.j2
-    dest: /etc/ssh/sshd_config.d/20-2fa.conf
-    owner: root
-    group: wheel
-    mode: "0644"
-    validate: "/usr/sbin/sshd -t -f %s"
   notify: Reload sshd

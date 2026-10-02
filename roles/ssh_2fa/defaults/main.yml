@@ -9,3 +9,9 @@ ssh_2fa_totp_nullok: true    # users without ~/.google_authenticator are not loc
 # that until it is set false. deploy_user is always exempt.
 ssh_2fa_exempt_users: []
 ssh_2fa_exempt_groups: []
+
+# Where deploy_user may log in from. It skips the second factor and base gives it
+# NOPASSWD sudo, so its key alone is root. Empty accepts it from anywhere sshd is
+# reachable. Addresses or CIDRs as sshd sees the source: behind a subnet router
+# that is the router, not the workstation.
+ssh_2fa_deploy_from: []
