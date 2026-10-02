@@ -7,6 +7,13 @@
         name: lynis
         state: present
 
-    - name: Run a lynis system audit (report-only)
-      ansible.builtin.command: lynis audit system --quiet --no-colors
-      changed_when: false
+    # Weekly from periodic, not inline in the play: the audit costs minutes and
+    # its output used to go nowhere.
+    - name: Deploy the weekly periodic Lynis audit
+      ansible.builtin.template:
+        src: 460.lynis.j2
+        dest: /usr/local/etc/periodic/weekly/460.lynis
+        owner: root
+        group: wheel
+        mode: "0755"
+        validate: "/bin/sh -n %s"

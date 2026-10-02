@@ -48,15 +48,13 @@
     quiet: true
   when: accounts_restrict_su | bool
 
-- name: Confirm pam_passwdqc enforces password quality (FreeBSD base default)
-  ansible.builtin.command: grep -Eq 'pam_passwdqc\.so' /etc/pam.d/passwd
-  register: accounts_passwdqc
-  changed_when: false
-  failed_when: false
-
-- name: Assert pam_passwdqc is present
-  ansible.builtin.assert:
-    that: accounts_passwdqc.rc == 0
-    fail_msg: "pam_passwdqc is missing from /etc/pam.d/passwd, password quality is not enforced."
-    quiet: true
-  when: accounts_assert_passwdqc | bool
+# ponytail: resets a hand-tuned passwdqc line to the stock options; a host that
+# tunes its own sets accounts_passwdqc: false.
+- name: Enforce password quality with FreeBSD's stock pam_passwdqc line
+  ansible.builtin.lineinfile:
+    path: /etc/pam.d/passwd
+    regexp: '^#?\s*password\s+\S+\s+pam_passwdqc\.so'
+    line: "password\trequisite\tpam_passwdqc.so\t\tenforce=users"
+    insertbefore: '^password\s+required\s+pam_unix\.so'
+    backup: true
+  when: accounts_passwdqc | bool

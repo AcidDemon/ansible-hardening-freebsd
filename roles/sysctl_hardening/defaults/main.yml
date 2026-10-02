@@ -7,7 +7,14 @@ sysctl_hardening_settings:
   # Hide processes running inside jails from the host's unprivileged users.
   # Matters most on a jail host, where it is otherwise 1 by default.
   security.bsd.see_jail_proc: "0"
-  # check_interface omitted: readback isn't idempotent on FreeBSD 14, and pf antispoof covers it.
+  # net.inet.ip.check_interface no longer exists: FreeBSD 14 renamed it
+  # rfc1122_strong_es (src 94df3271d6b2). Not set under either name. It checks
+  # that a packet's destination address belongs to the interface it arrived
+  # on, which says nothing about a forged source, and the kernel ignores it
+  # whenever net.inet.ip.forwarding is on (any routed-epair jail host). Forged
+  # sources are pf's job, and base's pf.conf has no antispoof rule: base_freebsd
+  # binds its management and service rules to an interface instead, once
+  # firewall_tier_iifnames is set.
   #
   # kern.randompid is handled separately below, not here: the kernel replaces the
   # value you write with a random modulus of its own, so writing 1 reads back as

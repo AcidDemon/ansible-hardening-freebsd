@@ -1,0 +1,29 @@
+#!/bin/sh
+# Managed by Ansible
+#
+# Every warning in full, the suggestions as a count. Lynis exits 0 with warnings
+# unless error-on-warnings is set, so the report is the result, and it truncates
+# the report at the start of every run. Exit codes as 510.aide: 1 for routine
+# output, 3 for anything a human has to read.
+report=/var/log/lynis-report.dat
+
+echo ""
+echo "Lynis audit:"
+if ! out=$(lynis audit system --cronjob --quiet 2>&1); then
+    echo "  lynis failed, so there is no new report:"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    exit 3
+fi
+if [ ! -s "$report" ]; then
+    echo "  lynis exited 0 but left no report at $report"
+    exit 3
+fi
+
+echo "  $(grep -c '^suggestion\[]=' "$report") suggestions, listed in $report"
+warnings=$(sed -n 's/^warning\[]=//p' "$report")
+if [ -z "$warnings" ]; then
+    echo "  no warnings"
+    exit 1
+fi
+printf '%s\n' "$warnings" | awk -F'|' '{ print "  " $1 ": " $2 ($3 == "-" || $3 == "" ? "" : " (" $3 ")") }'
+exit 3

@@ -1,0 +1,24 @@
+#!/bin/sh
+# Managed by Ansible
+#
+# chkrootkit's exit status is whatever its last test returned, so the output is
+# the result. -q still prints three things on FreeBSD that are not findings,
+# each dropped by exact line:
+#  - ifpromisc prints one blank line per interface;
+#  - z2 wants /var/log/wtmp and lastlog, gone since utx.* in FreeBSD 9.0, and
+#    says "not tested" on every run;
+#  - chk_nologin calls any nologin holding the string /bin/sh infected, and
+#    FreeBSD's is static, so libc's /bin/sh is in it. AIDE watches it instead.
+# Exit codes as 510.aide: 1 for a clean run, 3 for anything a human has to read.
+echo ""
+echo "chkrootkit:"
+out=$(/usr/local/sbin/chkrootkit -q 2>&1 | sed \
+    -e '/^[[:space:]]*$/d' \
+    -e '/^not tested: not found wtmp and\/or lastlog file$/d' \
+    -e "/^Checking \`nologin'\.\.\. INFECTED\$/d")
+if [ -n "$out" ]; then
+    printf '%s\n' "$out" | sed 's/^/  /'
+    exit 3
+fi
+echo "  no rootkit signatures matched"
+exit 1

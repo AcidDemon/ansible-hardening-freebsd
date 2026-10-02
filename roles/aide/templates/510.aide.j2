@@ -15,17 +15,17 @@ if [ ! -f "$db" ]; then
 fi
 
 # A database that was never populated reports "no differences" forever, which is
-# the most expensive kind of quiet. AIDE 0.19.0 through 0.19.2 on a ZFS root
-# cannot read the traversal root's ACL, skips recursion, and writes a database
-# holding one entry (aide/aide#208). Counting entries works only because
-# aide.conf sets gzip_dbout=no.
+# the most expensive kind of quiet. AIDE 0.19.0 through 0.19.2 on FreeBSD
+# mishandles st_rdev, fails the stat check on the traversal root, skips
+# recursion, and writes a database holding one entry (aide/aide#208). Counting
+# entries works only because aide.conf sets gzip_dbout=no.
 entries=$(grep -c '^/' "$db" 2>/dev/null)
 if [ "${entries:-0}" -lt {{ aide_min_entries }} ]; then
     echo ""
     echo "AIDE file-integrity check: the database holds ${entries:-0} entries, so it is"
-    echo "  broken rather than clean. Wants security/aide 0.19.3 or newer, which is on"
-    echo "  the latest pkg branch and may not be on quarterly. Upgrade, then re-run the"
-    echo "  aide role to rebuild the baseline."
+    echo "  broken rather than clean. Wants security/aide 0.19.3 or newer. Quarterly"
+    echo "  carries 0.19.4 from 2026Q4, though the FreeBSD 15 packages may lag the"
+    echo "  branch. Upgrade, then re-run the aide role to rebuild the baseline."
     exit 3
 fi
 

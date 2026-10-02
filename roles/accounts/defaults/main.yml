@@ -4,5 +4,7 @@ accounts_restrict_su: true
 # opt-in: editing login.conf's default class is intrusive.
 accounts_password_expiry: false
 accounts_passwordtime: "365d"
-# Stock /etc/pam.d/passwd already enforces quality via pam_passwdqc; assert-only, no task.
-accounts_assert_passwdqc: true
+# FreeBSD ships pam_passwdqc commented out in /etc/pam.d/passwd, so nothing
+# checks password quality until the role uncomments it. passwd(1) is the only
+# reader, and the stock enforce=users holds every account but root to it.
+accounts_passwdqc: true

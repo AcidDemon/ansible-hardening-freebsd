@@ -11,5 +11,5 @@ aide_exclude_paths:
   - /var/audit
 # Floor for "this is a baseline, not the leftovers of a scan that failed". Read by
 # both the role and 510.aide. The paths in aide.conf index tens of thousands of
-# files on any FreeBSD box; AIDE 0.19.2 on a ZFS root produced one.
+# files on any FreeBSD box; AIDE 0.19.2 produced one (aide/aide#208).
 aide_min_entries: 1000

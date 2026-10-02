@@ -7,9 +7,13 @@
         name: chkrootkit
         state: present
 
-    # The port drops 460.chkrootkit into periodic security, which runs it once this knob is set.
-    - name: Enable the daily chkrootkit periodic run
-      community.general.sysrc:
-        name: daily_chkrootkit_enable
-        value: "YES"
-        path: /etc/periodic.conf
+    # The port ships no periodic script (security/chkrootkit installs sbin/ and
+    # docs only), so nothing ever read daily_chkrootkit_enable. Same hook as 510.aide.
+    - name: Deploy the daily periodic chkrootkit check
+      ansible.builtin.template:
+        src: 530.chkrootkit.j2
+        dest: /usr/local/etc/periodic/security/530.chkrootkit
+        owner: root
+        group: wheel
+        mode: "0755"
+        validate: "/bin/sh -n %s"
