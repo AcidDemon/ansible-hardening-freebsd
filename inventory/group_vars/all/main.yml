@@ -4,7 +4,8 @@ ssh_port: 22
 ssh_allow_groups: [sshusers]
 admin_user: acid
 deploy_user: ansible
-# at(1) dead-man's-switch reverts the SSH drop-ins if we lose the session.
+# at(1) dead-man's-switch, armed only around the two SSH cutovers. If we lose the
+# session it removes the SSH drop-ins and puts back the stock /etc/pam.d/sshd.
 harden_safe_rollback: true
 harden_rollback_minutes: 20
 # 2FA is deployed, but deploy_user stays key-only.

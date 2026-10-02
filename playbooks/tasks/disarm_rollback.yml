@@ -1,6 +1,35 @@
 ---
+# FreeBSD atrm exits 0 for a job id that is no longer queued, so its status cannot tell
+# "disarmed" from "already fired". at -l <id> can: it lists a job only while it is pending,
+# because atrun clears the job file's x bit the moment it starts it. The check never fails
+# the task, so atrm below always runs; if at -l itself errors, the fail shows its stderr.
+# ponytail: a job atrun starts between at -l and atrm still goes green. That needs a window
+# already overrun and atrun's 5-minute tick in that instant; stat the drop-ins after atrm
+# if it ever matters.
+- name: Look for the rollback job before disarming it
+  ansible.builtin.command: "at -l {{ _harden_at_job }}"
+  register: _harden_atq
+  changed_when: false
+  failed_when: false
+  when: _harden_at_job | default('') | length > 0
+
 - name: Disarm the rollback dead-man's-switch
   ansible.builtin.command: "atrm {{ _harden_at_job }}"
   changed_when: false
   failed_when: false
   when: _harden_at_job | default('') | length > 0
+
+# A job that fires mid-play does not cut the play off: sshd re-execs on SIGHUP, the open
+# session survives, the probe passes against whatever config is left, and the run goes green
+# on a host with its drop-ins gone. Make that red.
+- name: Fail if the rollback fired before the play could disarm it
+  ansible.builtin.fail:
+    msg: >-
+      Rollback at job {{ _harden_at_job }} was no longer pending at disarm, so it has run:
+      it deleted the sshd drop-ins, put back /etc/pam.d/sshd.orig if there was one and reloaded
+      sshd during this play, so the host is NOT hardened. harden_rollback_minutes
+      ({{ harden_rollback_minutes | default(20) }}) is shorter than this window. Re-run the play.
+      {{ _harden_atq.stderr | default('') }}
+  when:
+    - _harden_at_job | default('') | length > 0
+    - _harden_atq.stdout | default('') | trim | length == 0

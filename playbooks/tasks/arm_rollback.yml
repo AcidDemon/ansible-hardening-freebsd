@@ -1,13 +1,20 @@
 ---
-# On lockout, strip the SSH drop-ins and reload sshd. Never touch pf, base owns /etc/pf.conf.
+# On lockout, strip the SSH drop-ins, put back the stock sshd PAM stack, and reload sshd.
+# Never touch pf, base owns /etc/pf.conf.
+# The PAM restore is not optional. Only 20-2fa.conf's AuthenticationMethods puts a key in front
+# of ssh_2fa's PAM stack, which on its own is a TOTP code, or with nullok nothing at all for an
+# account that never enrolled. Delete the drop-in and leave the stack, and stock sshd
+# (KbdInteractiveAuthentication yes) lets such an account in on an empty prompt. ssh_2fa saves
+# sshd.orig before its first PAM edit, so no sshd.orig means there is nothing to undo.
 # The revert is an at(1) job; atrun fires it at ~5 min granularity, so the real window is
 # harden_rollback_minutes + up to 5 min.
 # Below drops rollback jobs left armed by an aborted run, so a stale one can't fire after a
 # later success. The grep only matches jobs containing our drop-in path, so other at jobs stay.
+# FreeBSD atq prints a header, then the date first and the job number last, hence NR>1 and $NF.
 - name: Clear any stale harden rollback at jobs
   ansible.builtin.shell:
     cmd: |
-      for j in $(atq 2>/dev/null | awk '{print $1}'); do
+      for j in $(atq 2>/dev/null | awk 'NR>1 {print $NF}'); do
         if at -c "$j" 2>/dev/null | grep -q 'sshd_config.d/10-hardening.conf'; then atrm "$j"; fi
       done
   changed_when: false
@@ -15,7 +22,8 @@
 - name: Arm the rollback dead-man's-switch (at job)
   ansible.builtin.shell:
     cmd: >-
-      printf 'rm -f /etc/ssh/sshd_config.d/10-hardening.conf /etc/ssh/sshd_config.d/20-2fa.conf; service sshd reload\n'
+      printf 'rm -f /etc/ssh/sshd_config.d/10-hardening.conf /etc/ssh/sshd_config.d/20-2fa.conf;
+      [ -f /etc/pam.d/sshd.orig ] && cp /etc/pam.d/sshd.orig /etc/pam.d/sshd; service sshd reload\n'
       | at now + {{ harden_rollback_minutes | default(20) }} minutes
   register: _harden_at
   changed_when: true
