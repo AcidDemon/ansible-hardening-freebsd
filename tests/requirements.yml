@@ -1,5 +1,5 @@
 ---
-# Dev-only: pulls the base layer from the local repo so the chain smoke can run
+# Dev-only: pulls the base layer from its GitHub repo so the chain smoke can run
 # base_freebsd -> hardening_freebsd end to end. Install before `vagrant up`:
 #   ansible-galaxy collection install -r tests/requirements.yml
 collections:
@@ -7,4 +7,4 @@ collections:
   - name: ansible.posix
   - name: git+https://github.com/AcidDemon/ansible-base-freebsd.git
     type: git
-    version: v0.2.7
+    version: v0.2.8

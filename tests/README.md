@@ -4,13 +4,13 @@ The smoke runs the real chain: **base_freebsd → hardening_freebsd**.
 
 ## Prereq (host)
 
-Install the base layer (local) + deps so `tests/chain.yml` resolves:
+Install the base layer + deps so `tests/chain.yml` resolves:
 
 ```sh
 ansible-galaxy collection install -r tests/requirements.yml
 ```
 
-(base_freebsd must be tagged `v0.1.0` in `../ansible-base-freebsd`.)
+(base_freebsd comes from GitHub at the tag `tests/requirements.yml` pins, so that tag must be pushed.)
 
 ## Spin up + provision
 
@@ -39,6 +39,8 @@ service auditd status && auditctl -l 2>/dev/null; praudit -l /dev/auditpipe & sl
 ls -l /var/db/aide/aide.db 2>/dev/null; grep -c '^/' /var/db/aide/aide.db
 which lynis chkrootkit; ls -l /usr/local/sbin/security-report.sh
 /usr/local/etc/periodic/security/510.aide; echo "rc=$? (1 clean, 3 needs a human)"
+/usr/local/etc/periodic/security/530.chkrootkit; echo "rc=$? (1 clean, 3 needs a human)"
+/usr/local/etc/periodic/weekly/460.lynis; echo "rc=$? (1 clean, 3 needs a human; takes minutes)"
 # account policy
 grep -q umask /etc/login.conf && echo "login.conf policy present"
 # rollback disarmed (no leftover at job)
