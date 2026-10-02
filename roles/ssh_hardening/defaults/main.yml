@@ -16,12 +16,18 @@ ssh_allow_group_members:  # noqa: var-naming[no-role-prefix]
   - "{{ deploy_user | default('') }}"
   - "{{ ansible_user | default('') }}"
 
-# Crypto floor ~OpenSSH 7.2 (2016): curve25519, aes-gcm, chacha20, rsa-sha2, ed25519.
+# Client floor ~OpenSSH 7.2 (2016): curve25519, aes-gcm, chacha20, rsa-sha2, ed25519.
 # For a legacy client set ssh_pin_crypto: false, or override a list below.
+# Kex leads with the post-quantum hybrids; curve25519 is the fallback for older clients.
+# A MITM cannot strip the hybrid: both offer lists are signed into the exchange hash.
+# No finite-field DH (group16/18): stock OpenSSH 10.0 dropped it from sshd as well.
+# sshd must know every name, so OpenSSH >= 9.9 (FreeBSD 14.3+, 15.x); an older one
+# fails the template's `sshd -t` validate before the file is written.
 ssh_pin_crypto: true
 ssh_host_key_algorithms: >-
   ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256,rsa-sha2-256-cert-v01@openssh.com
 ssh_pubkey_algorithms: "ssh-ed25519,sk-ssh-ed25519@openssh.com,rsa-sha2-512,rsa-sha2-256"
 ssh_ciphers: "chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com"
 ssh_macs: "hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com"
-ssh_kex: "curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512"
+ssh_kex: >-
+  mlkem768x25519-sha256,sntrup761x25519-sha512,sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org

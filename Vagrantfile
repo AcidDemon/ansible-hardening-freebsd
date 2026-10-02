@@ -5,10 +5,13 @@
 #
 # Prereq (host): ansible-galaxy collection install -r tests/requirements.yml
 #
-# No libvirt FreeBSD 15 box published yet, so default is generic/freebsd14 (mechanisms are
-# version-agnostic). Override: FREEBSD_BOX=generic/freebsd15 vagrant up
+# No libvirt FreeBSD 15 box published yet, so default is bento/freebsd-14 pinned to 14.3,
+# the same box and version as the backupbox harness. Not generic/freebsd14: that is 14.0,
+# whose OpenSSH 9.5 rejects the mlkem768x25519-sha256 kex and fails `sshd -t`.
+# Override: FREEBSD_BOX=generic/freebsd15 BOX_VERSION=">= 0" vagrant up
 
-FREEBSD_BOX = ENV.fetch("FREEBSD_BOX", "generic/freebsd14")
+FREEBSD_BOX = ENV.fetch("FREEBSD_BOX", "bento/freebsd-14")
+BOX_VERSION = ENV.fetch("BOX_VERSION", "202508.03.0")
 MGMT_CIDR   = ENV.fetch("FREEBSD_MGMT_CIDR", "192.168.121.0/24")
 
 # Vagrant won't auto-load the repo ansible.cfg for a subdir playbook, so point
@@ -28,6 +31,7 @@ Vagrant.configure("2") do |config|
 
   config.vm.define "hardening" do |h|
     h.vm.box = FREEBSD_BOX
+    h.vm.box_version = BOX_VERSION
     h.vm.hostname = "fbsd-harden"
     h.vm.guest = :freebsd
     h.ssh.shell = "/bin/sh"
