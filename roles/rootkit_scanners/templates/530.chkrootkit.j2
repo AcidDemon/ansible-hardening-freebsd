@@ -2,20 +2,27 @@
 # Managed by Ansible
 #
 # chkrootkit's exit status is whatever its last test returned, so the output is
-# the result. -q still prints three things on FreeBSD that are not findings,
+# the result. -q still prints four things on FreeBSD that are not findings,
 # each dropped by exact line:
 #  - ifpromisc prints one blank line per interface;
 #  - z2 wants /var/log/wtmp and lastlog, gone since utx.* in FreeBSD 9.0, and
 #    says "not tested" on every run;
 #  - chk_nologin calls any nologin holding the string /bin/sh infected, and
-#    FreeBSD's is static, so libc's /bin/sh is in it. AIDE watches it instead.
+#    FreeBSD's is static, so libc's /bin/sh is in it. AIDE watches it instead;
+#  - the Syslogk test writes /proc/syslogk and then reports the file it finds.
+#    Linux's procfs refuses that write. FreeBSD mounts no procfs, so /proc is a
+#    plain directory, root creates the file, and every run says INFECTED.
+#    Syslogk is a Linux kernel module and cannot load here. The file it leaves
+#    behind is removed after the run.
 # Exit codes as 510.aide: 1 for a clean run, 3 for anything a human has to read.
 echo ""
 echo "chkrootkit:"
 out=$(/usr/local/sbin/chkrootkit -q 2>&1 | sed \
     -e '/^[[:space:]]*$/d' \
     -e '/^not tested: not found wtmp and\/or lastlog file$/d' \
-    -e "/^Checking \`nologin'\.\.\. INFECTED\$/d")
+    -e "/^Checking \`nologin'\.\.\. INFECTED\$/d" \
+    -e '/^INFECTED: Possible Malicious Syslogk LKM rootkit installed$/d')
+[ -f /proc/syslogk ] && rm -f /proc/syslogk
 if [ -n "$out" ]; then
     printf '%s\n' "$out" | sed 's/^/  /'
     exit 3

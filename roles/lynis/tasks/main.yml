@@ -7,6 +7,16 @@
         name: lynis
         state: present
 
+    # Lynis reads custom.prf on top of default.prf. default.prf belongs to the
+    # port (@sample), so local settings go here and survive an upgrade.
+    - name: Deploy the Lynis profile
+      ansible.builtin.template:
+        src: custom.prf.j2
+        dest: /usr/local/etc/lynis/custom.prf
+        owner: root
+        group: wheel
+        mode: "0644"
+
     # Weekly from periodic, not inline in the play: the audit costs minutes and
     # its output used to go nowhere.
     - name: Deploy the weekly periodic Lynis audit

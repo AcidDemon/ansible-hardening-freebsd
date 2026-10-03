@@ -1,0 +1,24 @@
+# Managed by Ansible
+#
+# Each entry silences a finding that is the FreeBSD default or this collection's
+# design, not a fault. A skipped test stops reporting altogether, so every skip
+# names what still watches the thing it covered.
+
+# pflogd opens pflog0 in promiscuous mode to log what pf drops.
+if_promisc:pflog0:pf log daemon interface:
+
+# toor is FreeBSD's second UID 0 account, locked and shell-less by default. Both
+# tests only exempt root. AIDE watches /etc/master.passwd, so a new UID 0
+# account still shows up in the nightly mail.
+skip-test=AUTH-9204
+skip-test=AUTH-9208
+
+# Matches every account with a '*' password and a real shell: uucp from base,
+# and the key-only deploy and zfs recv accounts this chain creates. '*' already
+# refuses password logins, and *LOCKED* would make sshd refuse their keys too.
+# AIDE watches /etc/master.passwd for new ones.
+skip-test=AUTH-9218
+
+# Single-user mode on an outerbase host runs in the unencrypted outer base,
+# whose /etc/ttys is a different file, so this one decides nothing there.
+skip-test=SHLL-6202
